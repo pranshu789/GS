@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import time
+from PIL import Image, ImageOps
+from skimage.restoration import unwrap_phase
 
-import numpy as np
-import matplotlib.pyplot as plt
 
 def fresnel_diffraction(x, y, E, z, wavelength):
     x_scale = x[-1] - x[0]
@@ -43,6 +43,23 @@ def load_intensity_image(file_path):
     intensity_image = plt.imread(file_path)
     return intensity_image
 
+def normalize_and_compare(A, B):
+    # Normalize A
+    A_norm = (A - np.min(A)) / (np.max(A) - np.min(A))
+
+    # Normalize B
+    B_norm = (B - np.min(B)) / (np.max(B) - np.min(B))
+
+    # Calculate C and error
+    C = A_norm - B_norm
+    C_out = A_norm**2 - B_norm**2
+    C_sq = C**2
+    A_sq = A_norm**2
+
+    error = np.sum(C_sq) / np.sum(A_sq)
+
+    return C_out, error
+
 def calculate_mse(image1, image2):
     return np.mean((image1 - image2)**2)
 
@@ -50,9 +67,26 @@ def calculate_mse(image1, image2):
 mse_values = []
 
 # loading images for E_nf, E_final_off_minus, and E_final_off_plus
-E_nf_intensity = load_intensity_image('/Users/pranshudave/Desktop/SET1/default1.tiff')
-E_final_off_minus_intensity = load_intensity_image('/Users/pranshudave/Desktop/SET1/offminus1.tiff')
-E_final_off_plus_intensity = load_intensity_image('/Users/pranshudave/Desktop/SET1/offplus1.tiff')
+E_nf_intensity = load_intensity_image('/Users/pranshudave/Desktop/Set3/Gdefault11.tiff')
+E_final_off_minus_intensity = load_intensity_image('/Users/pranshudave/Desktop/Set3/Goffminus11.tiff')
+E_final_off_plus_intensity = load_intensity_image('/Users/pranshudave/Desktop/Set3/Goffplus11.tiff')
+
+def zero_padding(image):
+    # Create a copy of the image to avoid modifying the original
+    padded_image = np.copy(image)
+    pixel_width = 400
+    pixel_height = 200
+    # Set the specified number of pixels from all edges to zero
+    padded_image[:pixel_height, :] = 0  # Top edge
+    padded_image[-pixel_height:, :] = 0  # Bottom edge
+    padded_image[:, :pixel_width] = 0  # Left edge
+    padded_image[:, -pixel_width:] = 0  # Right edge
+
+    return padded_image
+
+#E_nf_intensity = zero_padding(E_nf_intensity)
+#E_final_off_minus_intensity = zero_padding(E_final_off_minus_intensity)
+#E_final_off_plus_intensity = zero_padding(E_final_off_plus_intensity)
 
 # integration times
 exposure_time_E_nf = 750
@@ -67,10 +101,10 @@ E_final_off_plus_intensity = normalize_and_calibrate(E_final_off_plus_intensity,
 
 # Setting parameters (all in mm)
 calibration_pixel_to_mm = 0.60 / 1440  # Conversion factor from pixels to mm
-wavelength = 0.0006328
-z1 = 5.0
-z2 = 5.0  # Distances of three planes
-num_iterations = 100
+wavelength = 0.000535
+z1 = 4.0
+z2 = 4.0  # Distances of three planes
+num_iterations = 40
 
 # Image size and grids
 image_size_x = 1440
@@ -85,6 +119,8 @@ E_final_off_plus = np.sqrt(E_final_off_plus_intensity) * np.exp(1j * np.zeros_li
 
 # Propagate the field forward to the off-minus plane
 E_offm_updated = fresnel_diffraction(x, y, E_nf, -z1, wavelength)
+
+mse_values = [1]
 
 # Fresnel propagation forward and backward for GS iterations
 for iteration in range(num_iterations):
@@ -106,19 +142,19 @@ for iteration in range(num_iterations):
     # Propagate back to off-minus plane
     E_offm_updated = fresnel_diffraction(x, y, E_nf_updated, -z1, wavelength)
 
-    # Calculate MSE and store in the array
-    mse_value = calculate_mse(np.abs(E_final_off_minus), np.abs(E_offm_updated))
-    mse_values.append(mse_value)
+    # Calculate Error
+    _, err = normalize_and_compare(np.abs(E_offm_updated), np.abs(E_final_off_minus))
+    mse_values.append(err)
 
     if iteration % 50 == 0:
-        plt.imshow(np.angle(E_nf_updated), cmap='Greens')
+        plt.imshow(np.angle(E_offm_updated), cmap='Greens')
         plt.title(f'Iteration {iteration}')
         plt.colorbar()
         plt.show()
 
 # Display and save the final results
 plt.figure(figsize=(24, 20))
-plt.suptitle('Gerchberg-Saxton Algorithm - Three Planes - Normal', fontsize=40)
+plt.suptitle('Gerchberg-Saxton Algorithm - Three Planes - Gaussian', fontsize=40)
 
 # Display the retrieved phase
 plt.subplot(3, 3, 1)
@@ -127,7 +163,7 @@ plt.title('Actual Off-Minus Field')
 plt.colorbar()
 
 plt.subplot(3, 3, 2)
-plt.imshow(np.angle(E_offm_updated), cmap='coolwarm')
+plt.imshow(np.angle(E_offm_updated), cmap='coolwarm', vmin=-np.pi, vmax=np.pi)
 plt.title('Retrieved Off-Minus Phase')
 plt.colorbar()
 
@@ -144,6 +180,8 @@ diff_off_minus = np.abs(np.abs(normalize_and_calibrate(E_final_off_minus,1)) - n
 E_offm_updated = np.abs(E_final_off_minus) * np.exp(1j * np.angle(E_offm_updated))
 E_nf_updated = fresnel_diffraction(x, y, E_offm_updated, z1, wavelength)
 
+np.savez('/Users/pranshudave/Desktop/Results/E_offm_updated.npz', E_offm_updated=E_offm_updated)
+
 # Display the retrieved phase
 plt.subplot(3, 3, 4)
 plt.imshow(np.abs(E_nf), cmap='plasma')
@@ -151,7 +189,7 @@ plt.title('Actual Focus Field')
 plt.colorbar()
 
 plt.subplot(3, 3, 5)
-plt.imshow(np.angle(E_nf_updated), cmap='coolwarm')
+plt.imshow(np.angle(E_nf_updated), cmap='coolwarm', vmin=-np.pi, vmax=np.pi)
 plt.title('Retrieved Focus Phase')
 plt.colorbar()
 
@@ -167,6 +205,8 @@ diff_focus = np.abs(np.abs(normalize_and_calibrate(E_nf,1)) - np.abs(normalize_a
 E_nf_updated = np.abs(E_nf) * np.exp(1j * np.angle(E_nf_updated))
 E_offp_updated = fresnel_diffraction(x, y, E_nf_updated, z2, wavelength)
 
+np.savez('/Users/pranshudave/Desktop/Results/E_nf_updated.npz', E_nf_updated=E_nf_updated)
+
 # Display the retrieved phase
 plt.subplot(3, 3, 7)
 plt.imshow(np.abs(E_final_off_plus), cmap='plasma')
@@ -174,7 +214,7 @@ plt.title('Actual Off-Plus Field')
 plt.colorbar()
 
 plt.subplot(3, 3, 8)
-plt.imshow(np.angle(E_offp_updated), cmap='coolwarm')
+plt.imshow(np.angle(E_offp_updated), cmap='coolwarm', vmin=-np.pi, vmax=np.pi)
 plt.title('Retrieved Off-Plus Phase')
 plt.colorbar()
 
@@ -225,17 +265,43 @@ figure_path_diff = desktop_path_diff + "/normal-differences.png"
 plt.savefig(figure_path_diff, bbox_inches='tight')
 plt.show()
 
+#mse_values = normalize_and_calibrate(mse_values,1)
 
 # Plotting the convergence of MSE over iterations
 plt.figure(figsize=(10, 6))
-plt.plot(range(1, num_iterations + 1), mse_values, marker='o')
-plt.title('Convergence of MSE over Iterations')
-plt.xlabel('Iteration')
-plt.ylabel('Mean Squared Error (MSE)')
+plt.plot(range(0, num_iterations + 1), np.log(mse_values), marker='o')
+plt.title('Convergence of Error value over Iterations')
+plt.xlabel('Iteration #')
+plt.ylabel('Log(Rel. error) (unitless)')
 plt.grid(True)
 # Save the figure with absolute differences to the desktop
 desktop_path_conv = "/Users/pranshudave/Desktop/Results"
 figure_path_conv = desktop_path_conv + "/normal-convergence.png"
 
 plt.savefig(figure_path_conv, bbox_inches='tight')
+plt.show()
+
+
+
+# Assuming np.angle(E_nf_updated) is your phase array
+phase_array = np.angle(E_offm_updated)
+
+# Get the middle index along the y-axis
+middle_y_index = phase_array.shape[0] // 2
+
+# Extract the horizontal cross-section at y=middle_y_index
+horizontal_cross_section = phase_array[middle_y_index, :]
+
+# Plot the horizontal cross-section
+plt.plot(horizontal_cross_section)
+plt.xlabel('X-axis')
+plt.ylabel('Phase')
+plt.title('Horizontal Cross-section at y = {}'.format(middle_y_index))
+plt.grid(True)
+plt.xlim(400,1000)
+
+figure_path_conv = desktop_path_conv + "/cross-section.png"
+
+plt.savefig(figure_path_conv, bbox_inches='tight')
+
 plt.show()

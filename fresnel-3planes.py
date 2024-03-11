@@ -74,7 +74,7 @@ E_final_off_plus_intensity = load_intensity_image('/Users/pranshudave/Desktop/Se
 def zero_padding(image):
     # Create a copy of the image to avoid modifying the original
     padded_image = np.copy(image)
-    pixel_width = 400
+    pixel_width = 375
     pixel_height = 200
     # Set the specified number of pixels from all edges to zero
     padded_image[:pixel_height, :] = 0  # Top edge
@@ -84,9 +84,9 @@ def zero_padding(image):
 
     return padded_image
 
-#E_nf_intensity = zero_padding(E_nf_intensity)
-#E_final_off_minus_intensity = zero_padding(E_final_off_minus_intensity)
-#E_final_off_plus_intensity = zero_padding(E_final_off_plus_intensity)
+E_nf_intensity = zero_padding(E_nf_intensity)
+E_final_off_minus_intensity = zero_padding(E_final_off_minus_intensity)
+E_final_off_plus_intensity = zero_padding(E_final_off_plus_intensity)
 
 # integration times
 exposure_time_E_nf = 750
@@ -143,7 +143,7 @@ for iteration in range(num_iterations):
     E_offm_updated = fresnel_diffraction(x, y, E_nf_updated, -z1, wavelength)
 
     # Calculate Error
-    _, err = normalize_and_compare(np.abs(E_offm_updated), np.abs(E_final_off_minus))
+    diff, err = normalize_and_compare(np.abs(E_offm_updated), np.abs(E_final_off_minus))
     mse_values.append(err)
 
     if iteration % 50 == 0:
@@ -153,27 +153,34 @@ for iteration in range(num_iterations):
         plt.show()
 
 # Display and save the final results
+plt.rcParams.update({'font.size': 22})
 plt.figure(figsize=(24, 20))
-plt.suptitle('Gerchberg-Saxton Algorithm - Three Planes - Gaussian', fontsize=40)
+plt.suptitle('Gerchberg-Saxton Algorithm - Three Planes', fontsize=40)
 
 # Display the retrieved phase
 plt.subplot(3, 3, 1)
-plt.imshow(np.abs(normalize_and_calibrate(E_final_off_minus,1)), cmap='plasma')
+plt.imshow(np.abs(normalize_and_calibrate(E_final_off_minus,1)), cmap='plasma',extent=[X.min(), X.max(), Y.min(), Y.max()])
 plt.title('Actual Off-Minus Field')
+plt.xlabel('x (mm)')
+plt.ylabel('y (mm)')
 plt.colorbar()
 
 plt.subplot(3, 3, 2)
-plt.imshow(np.angle(E_offm_updated), cmap='coolwarm', vmin=-np.pi, vmax=np.pi)
+plt.imshow(np.angle(E_offm_updated), cmap='coolwarm', vmin=-np.pi, vmax=np.pi,extent=[X.min(), X.max(), Y.min(), Y.max()])
 plt.title('Retrieved Off-Minus Phase')
+plt.xlabel('x (mm)')
+plt.ylabel('y (mm)')
 plt.colorbar()
 
 # Display the final result
 plt.subplot(3, 3, 3)
-plt.imshow(np.abs(normalize_and_calibrate(E_offm_updated,1)), cmap='plasma')
+plt.imshow(np.abs(normalize_and_calibrate(E_offm_updated,1)), cmap='plasma',extent=[X.min(), X.max(), Y.min(), Y.max()])
 plt.title('Retrieved Off-Minus Field')
+plt.xlabel('x (mm)')
+plt.ylabel('y (mm)')
 plt.colorbar()
 
-diff_off_minus = np.abs(np.abs(normalize_and_calibrate(E_final_off_minus,1)) - np.abs(normalize_and_calibrate(E_offm_updated,1)))
+diff_off_minus, err_minus = normalize_and_compare(np.abs(E_offm_updated), np.abs(E_final_off_minus))
 
 
 # Propagate to default plane
@@ -184,22 +191,30 @@ np.savez('/Users/pranshudave/Desktop/Results/E_offm_updated.npz', E_offm_updated
 
 # Display the retrieved phase
 plt.subplot(3, 3, 4)
-plt.imshow(np.abs(E_nf), cmap='plasma')
+plt.imshow(np.abs(E_nf), cmap='plasma',extent=[X.min(), X.max(), Y.min(), Y.max()])
 plt.title('Actual Focus Field')
+plt.xlabel('x (mm)')
+plt.ylabel('y (mm)')
 plt.colorbar()
 
 plt.subplot(3, 3, 5)
-plt.imshow(np.angle(E_nf_updated), cmap='coolwarm', vmin=-np.pi, vmax=np.pi)
+plt.imshow(np.angle(E_nf_updated), cmap='coolwarm', vmin=-np.pi, vmax=np.pi,extent=[X.min(), X.max(), Y.min(), Y.max()])
 plt.title('Retrieved Focus Phase')
+plt.xlabel('x (mm)')
+plt.ylabel('y (mm)')
 plt.colorbar()
+#plt.xlim(550,900)
+#plt.ylim(400,800)
 
 # Display the final result
 plt.subplot(3, 3, 6)
-plt.imshow(np.abs(normalize_and_calibrate(E_nf_updated,1)), cmap='plasma')
+plt.imshow(np.abs(normalize_and_calibrate(E_nf_updated,1)), cmap='plasma',extent=[X.min(), X.max(), Y.min(), Y.max()])
 plt.title('Retrieved Focus Field')
+plt.xlabel('x (mm)')
+plt.ylabel('y (mm)')
 plt.colorbar()
 
-diff_focus = np.abs(np.abs(normalize_and_calibrate(E_nf,1)) - np.abs(normalize_and_calibrate(E_nf_updated,1)))
+diff_focus, err_focus = normalize_and_compare(np.abs(E_nf_updated), np.abs(E_nf))
 
 # Propagate to off-plus plane
 E_nf_updated = np.abs(E_nf) * np.exp(1j * np.angle(E_nf_updated))
@@ -209,19 +224,25 @@ np.savez('/Users/pranshudave/Desktop/Results/E_nf_updated.npz', E_nf_updated=E_n
 
 # Display the retrieved phase
 plt.subplot(3, 3, 7)
-plt.imshow(np.abs(E_final_off_plus), cmap='plasma')
+plt.imshow(np.abs(E_final_off_plus), cmap='plasma',extent=[X.min(), X.max(), Y.min(), Y.max()])
 plt.title('Actual Off-Plus Field')
+plt.xlabel('x (mm)')
+plt.ylabel('y (mm)')
 plt.colorbar()
 
 plt.subplot(3, 3, 8)
-plt.imshow(np.angle(E_offp_updated), cmap='coolwarm', vmin=-np.pi, vmax=np.pi)
+plt.imshow(np.angle(E_offp_updated), cmap='coolwarm', vmin=-np.pi, vmax=np.pi, extent=[X.min(), X.max(), Y.min(), Y.max()])
 plt.title('Retrieved Off-Plus Phase')
+plt.xlabel('x (mm)')
+plt.ylabel('y (mm)')
 plt.colorbar()
 
 # Display the final result
 plt.subplot(3, 3, 9)
-plt.imshow(np.abs(normalize_and_calibrate(E_offp_updated,1)), cmap='plasma')
+plt.imshow(np.abs(normalize_and_calibrate(E_offp_updated,1)), cmap='plasma',extent=[X.min(), X.max(), Y.min(), Y.max()])
 plt.title('Retrieved Off-Plus Field')
+plt.xlabel('x (mm)')
+plt.ylabel('y (mm)')
 plt.colorbar()
 
 
@@ -234,33 +255,42 @@ plt.show()
 
 
 # Calculate absolute differences between Actual and Retrieved fields
-diff_off_plus = np.abs(np.abs(normalize_and_calibrate(E_final_off_plus,1)) - np.abs(normalize_and_calibrate(E_offp_updated,1)))
+diff_off_plus, err_plus = normalize_and_compare(np.abs(E_offp_updated), np.abs(E_final_off_plus))
 
 # Plotting the final absolute differences
-plt.figure(figsize=(18, 8))
+plt.rcParams.update({'font.size': 15})
+plt.figure(figsize=(25, 12))
 plt.suptitle('Gerchberg-Saxton Algorithm - Three Planes - Absolute Differences', fontsize=40)
 
 # Display the absolute difference for Off-Minus plane
 plt.subplot(1, 3, 1)
-plt.imshow(diff_off_minus, cmap='plasma')
+plt.imshow(diff_off_minus, cmap='plasma', vmin=0, extent=[X.min(), X.max(), Y.min(), Y.max()])
 plt.title('Absolute Difference - Off-Minus Plane')
+plt.xlabel('x (mm)')
+plt.ylabel('y (mm)')
 plt.colorbar()
 
 # Display the absolute difference for Focus plane
 plt.subplot(1, 3, 2)
-plt.imshow(diff_focus, cmap='plasma')
+plt.imshow(diff_focus, cmap='plasma', vmin=0, extent=[X.min(), X.max(), Y.min(), Y.max()])
 plt.title('Absolute Difference - Focus Plane')
+plt.xlabel('x (mm)')
+plt.ylabel('y (mm)')
 plt.colorbar()
 
 # Display the absolute difference for Off-Plus plane
 plt.subplot(1, 3, 3)
-plt.imshow(diff_off_plus, cmap='plasma')
+plt.imshow(diff_off_plus, cmap='plasma', vmin=0, extent=[X.min(), X.max(), Y.min(), Y.max()])
 plt.title('Absolute Difference - Off-Plus Plane')
+plt.xlabel('x (mm)')
+plt.ylabel('y (mm)')
 plt.colorbar()
 
 # Save the figure with absolute differences to the desktop
 desktop_path_diff = "/Users/pranshudave/Desktop/Results"
 figure_path_diff = desktop_path_diff + "/normal-differences.png"
+
+
 
 plt.savefig(figure_path_diff, bbox_inches='tight')
 plt.show()
@@ -268,6 +298,7 @@ plt.show()
 #mse_values = normalize_and_calibrate(mse_values,1)
 
 # Plotting the convergence of MSE over iterations
+plt.rcParams.update({'font.size': 15})
 plt.figure(figsize=(10, 6))
 plt.plot(range(0, num_iterations + 1), np.log(mse_values), marker='o')
 plt.title('Convergence of Error value over Iterations')
@@ -305,3 +336,4 @@ figure_path_conv = desktop_path_conv + "/cross-section.png"
 plt.savefig(figure_path_conv, bbox_inches='tight')
 
 plt.show()
+

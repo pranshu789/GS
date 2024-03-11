@@ -21,6 +21,22 @@ def fresnel_diffraction(x, y, E, z, wavelength):
     E_D = np.fft.ifftshift(np.fft.ifft2(np.fft.ifftshift(F_E_D)))
     return E_D
 
+def normalize_and_compare(A, B):
+    # Normalize A
+    A_norm = (A - np.min(A)) / (np.max(A) - np.min(A))
+
+    # Normalize B
+    B_norm = (B - np.min(B)) / (np.max(B) - np.min(B))
+
+    # Calculate C and error
+    C = A_norm - B_norm
+    C_out = A_norm**2 - B_norm**2
+    C_sq = C**2
+    A_sq = A_norm**2
+
+    error = np.sum(C_sq) / np.sum(A_sq)
+
+    return C_out, error
 
 def gaussian(x, y, sigma):
     return np.exp(-(x ** 2 + y ** 2) / (2 * sigma ** 2))
@@ -44,10 +60,10 @@ def calculate_fwhm(x, y):
 # Set parameters (all in mm)
 N = M = 256
 calibration = 0.01
-wavelength = 0.0006328
+wavelength = 0.000535
 z_value = 100.0
 num_iterations = 100
-sigma = 0.4
+sigma = 0.33
 
 # Create grid
 x = np.arange(1, M + 1) * calibration
@@ -106,7 +122,8 @@ E_nf1 = A_nf * np.exp(1j * phi_nf)
 
 E_final = fresnel_diffraction(x, y, E_nf1, z_value, wavelength)
 
-
+# Initialize the array to store MSE values over iterations
+mse_values = [1]
 
 # GS Algorithm
 #def GS_Algorithm(E_final):
@@ -129,7 +146,9 @@ for iteration in range(num_iterations):
         plt.title(f'Iteration {iteration}')
         plt.colorbar()
         plt.show()
-
+    # Calculate absolute differences between E_final and E_ff_updated
+    diff, mse = normalize_and_compare(np.abs(E_ff_updated), np.abs(E_final))
+    mse_values.append(mse)
 
 # Update the phase using the target amplitude
 
@@ -138,48 +157,78 @@ E_f1_updated = np.abs(E_final) * np.exp(1j * np.angle(E_ff_updated))
 # Propagate the field back to the near field
 E_nf_updated = fresnel_diffraction(x, y, E_f1_updated, -z_value, wavelength)
 # Display results after GS iterations
+
+plt.rcParams.update({'font.size': 15})
 plt.figure(figsize=(20, 12))
+plt.suptitle('Simulation of GS-Fresnel with quadrant-phase', fontsize=20)
 
 # Display the initial target field
 plt.subplot(2, 3, 3)
-plt.imshow(np.abs(E_final), cmap='Greens')
-plt.title('Target Field')
+plt.imshow(np.abs(E_final), cmap='Greens', extent=[X.min(), X.max(), Y.min(), Y.max()])
+plt.title('Created Propagated Field')
 plt.colorbar()
+
 
 # Display the initial phase
 plt.subplot(2, 3, 2)
-plt.imshow(np.angle(E_nf), cmap='Greens')
-plt.title('Initial Phase')
+plt.imshow(np.angle(E_nf), cmap='Greens', extent=[X.min(), X.max(), Y.min(), Y.max()])
+plt.title('Initialized Focus Field for GS')
 plt.colorbar()
 
 # Display the initial near field
 plt.subplot(2, 3, 1)
-plt.imshow(np.abs(E_nf), cmap='Greens')
-plt.title('Initial Field')
+plt.imshow(np.abs(E_nf), cmap='Greens', extent=[X.min(), X.max(), Y.min(), Y.max()])
+plt.title('Created Focus Field')
 plt.colorbar()
 
 # Display the initial field with phase
 plt.subplot(2, 3, 4)
-plt.imshow(np.angle(E_nf1), cmap='seismic')
-plt.title('Initial Target Phase')
+plt.imshow(np.angle(E_nf1), cmap='seismic', vmin=-np.pi, vmax=np.pi, extent=[X.min(), X.max(), Y.min(), Y.max()])
+plt.title('Created Focus Phase')
 plt.colorbar()
 
 # Display the retrieved phase
 plt.subplot(2, 3, 5)
-plt.imshow(np.angle(E_nf_updated), cmap='seismic')
+plt.imshow(np.angle(E_nf_updated), cmap='seismic', vmin=-np.pi, vmax=np.pi, extent=[X.min(), X.max(), Y.min(), Y.max()])
 plt.title('Retrieved Phase - after GS')
 plt.colorbar()
 
 # Display the final result
 plt.subplot(2, 3, 6)
-plt.imshow(np.abs(E_ff_updated), cmap='Greens')
-plt.title('Retrieved Final Field - after GS')
+plt.imshow(np.abs(E_ff_updated), cmap='Greens', extent=[X.min(), X.max(), Y.min(), Y.max()])
+plt.title('Retrieved Propagated Field - after GS')
 plt.colorbar()
+
+
 
 desktop_path_test= "/Users/pranshudave/Desktop/Results"
 figure_path_test = desktop_path_test + "/test.png"
 
 plt.savefig(figure_path_test, bbox_inches='tight')
 
+plt.show()
+
+
+# Plot the absolute differences
+plt.rcParams.update({'font.size': 15})
+plt.figure(figsize=(15, 5))
+plt.subplot(1, 2, 1)
+plt.imshow(np.abs(diff), cmap='viridis', extent=[X.min(), X.max(), Y.min(), Y.max()])
+plt.title('Absolute Differences')
+plt.colorbar()
+
+# Plot the convergence of MSE over iterations
+plt.subplot(1, 2, 2)
+plt.plot(range(0, num_iterations+1), np.log(mse_values), marker='o')
+plt.title('Convergence of Error value over Iterations')
+plt.xlabel('Iteration #')
+plt.ylabel('Log(Rel. error) (unitless)')
+plt.grid(True)
+
+# Save the figure with absolute differences to the desktop
+desktop_path_conv = "/Users/pranshudave/Desktop/Results"
+figure_path_conv = desktop_path_conv + "/test-convergence.png"
+
+plt.savefig(figure_path_conv, bbox_inches='tight')
 plt.show()
 

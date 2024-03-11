@@ -1,6 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.colors as col
+import scipy.special # just for the example function
 
 
 def fresnel_diffraction(x, y, E, z, wavelength):
@@ -96,24 +100,46 @@ A_nf = gaussian(X, Y, sigma)
 # phase pattern
 phi_nf = np.zeros_like(A_nf)
 
-# phase pattern
-phi_nf = np.zeros_like(A_nf)
 
-center_x, center_y = phi_nf.shape[0] // 2, phi_nf.shape[1] // 2
-square_size = 15  # Adjust the size of the square as needed
+# Circle contour
+def make_segmented_cmap():
+    white = '#ffffff'
+    red = '#ff0000'
+    blue = '#0000ff'
+    orange = '#ffa500'
+    yellow = '#ffff00'
+    green = '#008000'
+    indigo = '#4b0082'
+    violet = '#9400d3'
+    anglemap = col.LinearSegmentedColormap.from_list(
+        'anglemap', [ violet, blue, blue, green,green, white, yellow, yellow, orange,orange, red, violet], N=256, gamma=1)
+    return anglemap
 
-phi_nf[center_x - square_size//2:center_x + square_size//2,
-       center_y - square_size//2:center_y + square_size//2] = 1  # Assign the desired phase value
+segmented_cmap = make_segmented_cmap()
 
+
+
+num_sectors = 16
+sector_angle = np.pi / 8  # Total angle is pi
+for i in range(num_sectors):
+    start_angle = (i-4) * sector_angle
+    end_angle = (i -3) * sector_angle
+    sector_mask = ((start_angle <= np.arctan2(Y, X)) & (np.arctan2(Y, X) < end_angle)) | ((start_angle <= np.arctan2(Y, X) + 2 * np.pi) & (np.arctan2(Y, X) + 2 * np.pi < end_angle))
+    phi_nf[sector_mask] = i * ((np.pi / 4))
+    print(i)# Assign phase based on sector
+
+circle = ((X**2 + Y**2) > 1.3)
+phi_nf[circle] = 0
 
 E_nf1 = phi_nf
-plt.imshow(np.abs(E_nf1), cmap='PuRd')
+plt.imshow(np.remainder((E_nf1), 2*np.pi), cmap='twilight', vmin=0, vmax=2*np.pi)
 plt.colorbar()
+plt.title('L=2 Phase Change (radians)')
 plt.show()
-E_ft = np.fft.fftshift(fftpack.fft2(E_nf1))
-plt.imshow(np.abs(E_ft), cmap='PuRd')
-plt.colorbar()
-plt.show()
+#E_ft = np.fft.fftshift(fftpack.fft2(E_nf1))
+#lt.imshow(np.abs(E_ft), cmap='PuRd')
+#plt.colorbar()
+#plt.show()
 
 
 

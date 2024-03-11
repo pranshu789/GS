@@ -98,3 +98,5 @@ plt.tight_layout()
 plt.show()
 
 print(len(coefficients))
+
+zernike.pyramid

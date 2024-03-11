@@ -32,7 +32,7 @@ near_field = data['E_nf_updated']
 padded_near_field = np.zeros((1300,1300))
 
 # Specify the region of interest
-roi = near_field[375:550, 650:800]
+roi = near_field[425:600, 625:775]
 
 # Assign the values of the region of interest to the corresponding part in the padded_near_field
 padded_near_field[540:715, 575:725] = roi
@@ -41,7 +41,7 @@ near_field=padded_near_field
 
 # Setting parameters (all in mm)
 calibration_pixel_to_mm = 0.60 / 1440  # Conversion factor from pixels to mm
-wavelength = 0.0006328
+wavelength = 0.000535
 focal_length = 100.0  # Focal length of the lens in mm
 size = calibration_pixel_to_mm
 
@@ -61,7 +61,7 @@ far_field_intensity, far_field_phase = propagate_near_to_far(near_field, wavelen
 
 far_field_intensity = far_field_intensity[625:675,625:675]
 far_field_phase = far_field_phase[625:675,625:675]
-far_field_phase = unwrap_phase((far_field_phase))
+#far_field_phase = unwrap_phase((far_field_phase))
 
 # normalized image
 far_field_intensity = far_field_intensity**2
@@ -72,7 +72,7 @@ far_field_intensity = far_field_intensity / max_pixel_value
 small_constant = 1e-10
 
 plt.figure(figsize=(12, 6))
-plt.suptitle("Far-field Fraunhofer Approximation", fontsize=33)
+plt.suptitle("Far-field Fraunhofer Approximation for Gaussian", fontsize=25)
 
 plt.subplot(1, 3, 1)
 plt.imshow((np.abs(near_field) + small_constant), cmap='plasma')
@@ -92,7 +92,7 @@ plt.title('Far Field Phase')
 plt.colorbar()
 
 desktop_path_conv = "/Users/pranshudave/Desktop/Results"
-figure_path_conv = desktop_path_conv + "/far-field.png"
+figure_path_conv = desktop_path_conv + "/far-fieldg.png"
 
 plt.savefig(figure_path_conv, bbox_inches='tight')
 
